@@ -9,14 +9,72 @@ layout: null
 <title>正在装修中</title>
 <meta name="description" content="正在装修中，你来这里干什么？">
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#f4f3f1">
+
+<!-- 防闪烁：在样式生效前就把已保存的主题贴到 <html> 上，并同步地址栏颜色 -->
+<script>
+  (function () {
+    var root = document.documentElement;
+    var saved = null;
+    try { saved = localStorage.getItem("uc:theme"); } catch (e) { saved = null; }
+    if (saved !== "light" && saved !== "dark") saved = null;
+
+    var dark = saved ? saved === "dark"
+                     : window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+    if (saved) root.setAttribute("data-theme", saved);
+
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", dark ? "#1a1917" : "#f4f3f1");
+  })();
+</script>
+
 <style>
+  /* ── 1. 主题变量：浅色为默认，深色由下面两组选择器覆盖 ── */
   :root{
+    color-scheme:light;
     --bg:#f4f3f1;
     --fg:#1c1c1e;
-    --muted:#9a9893;
+    --muted:#6f6d69;            /* 原 #9a9893：对比度仅 2.60:1；调深后 4.66:1，达 WCAG AA */
+    --sel-bg:#dedbd4;           /* ::selection 背景 */
+    --sel-fg:#1c1c1e;           /* ::selection 文字 */
+    --ctl-border:rgba(0,0,0,.44);      /* 切换按钮描边：叠底后 3.19:1 (UI AA) */
+    --ctl-bg:rgba(255,255,255,.55);    /* 切换按钮底色（装饰性） */
+    --scroll-thumb:#8d8b86;            /* 滚动条滑块：3.07:1 (UI AA) */
   }
+
+  /* ── 2a. 深色：跟随系统偏好 ── */
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --bg:#1a1917;
+      --fg:#ededeb;
+      --muted:#85837e;
+      --sel-bg:#3b3833;
+      --sel-fg:#f4f2ef;
+      --ctl-border:rgba(255,255,255,.34);
+      --ctl-bg:rgba(255,255,255,.06);
+      --scroll-thumb:#7c7a76;
+    }
+  }
+
+  /* ── 2b. 深色：手动指定（优先级高于系统偏好） ── */
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#1a1917;
+    --fg:#ededeb;
+    --muted:#85837e;
+    --sel-bg:#3b3833;
+    --sel-fg:#f4f2ef;
+    --ctl-border:rgba(255,255,255,.34);
+    --ctl-bg:rgba(255,255,255,.06);
+    --scroll-thumb:#7c7a76;
+  }
+
+  /* ── 3. 基础布局（与改造前完全一致） ── */
   *{box-sizing:border-box}
   html,body{height:100%}
+  html{background:var(--bg);scrollbar-color:var(--scroll-thumb) transparent}
   body{
     margin:0;
     background:var(--bg);
@@ -57,40 +115,77 @@ layout: null
     animation:rise .5s .15s cubic-bezier(.22,1,.36,1) both;
   }
 
+  /* ── 4. 边界：选中文字 ── */
+  ::selection{background:var(--sel-bg);color:var(--sel-fg)}
+
+  /* ── 5. 手动切换按钮：固定定位，不参与居中布局 ── */
+  #theme-toggle{
+    position:fixed;
+    top:clamp(12px,2.4vh,20px);
+    right:clamp(12px,2.4vw,20px);
+    width:34px;
+    height:34px;
+    display:grid;
+    place-items:center;
+    padding:0;
+    margin:0;
+    color:var(--muted);            /* 实色不用半透明，保证 ≥3:1 的控件对比度 */
+    background:var(--ctl-bg);
+    border:1px solid var(--ctl-border);
+    border-radius:50%;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition:color .25s ease,background-color .25s ease,border-color .25s ease;
+  }
+  #theme-toggle:hover{color:var(--fg)}
+  #theme-toggle:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+  #theme-toggle svg{display:block}
+
   @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   @keyframes blink{0%,50%{opacity:1}50.01%,100%{opacity:0}}
 
+  /* ── 6. 边界：主题切换过渡（尊重减少动效偏好） ── */
+  body,h1,h1::after,footer{
+    transition:background-color .25s ease,color .25s ease;
+  }
   @media (prefers-reduced-motion:reduce){
     h1,footer{animation:none}
     h1::after{animation:none}
+    body,h1,h1::after,footer,#theme-toggle{transition:none}
   }
 </style>
 </head>
 <body>
 <main>
   <h1 id="line">正在装修中，你来这里干什么？</h1>
-  <footer>这是你第 <span id="n">1</span> 次光临</footer>
+  <footer>刷新一次，换一句话 · 第 <span id="n">1</span> 次光临</footer>
 </main>
+
+<button id="theme-toggle" type="button" aria-label="切换深色模式" title="切换深色模式">
+  <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>
+  </svg>
+</button>
 
 <script>
   // 文案池：想加就往后追加，改完刷新即可生效
   var COPY = [
-"正在装修中，你来这里干什么？" ,
-"工地重地，闲人免进。说的就是你。" ,
-"装修中，灰尘有点大，建议戴个口罩再刷新。" ,
-"这里还什么都没建好，你是第一个来的，荣幸吗？" ,
-"正在装修中。工人师傅说：再等等。" ,
-"页面装修中，进度 3%。刷新不会让它变快。" ,
-"装修中，请勿在此堆放杂物。你的好奇心除外。" ,
-"正在装修中，预计 114514 年后完工。" ,
-"上次看到这句话还是在上一次" ,
-"施工重地，请勿围观。你已经在围观了。" ,
-"装修中，暂时没有内容——不过随机文案也算内容吧..." ,
-"这里什么都没有，除了这句话和你的好奇心。" ,
-"正在装修中。你来这里干什么？我也想知道。" ,
-"抱歉，本页还在装修。要不你先去别处逛逛？" ,
-"啊 我该给你看什么好呢(翻)" ,
-"早上好/中午好/晚上好/凌晨好"
+    "正在装修中，你来这里干什么？",
+    "工地重地，闲人免进。说的就是你。",
+    "装修中，灰尘有点大，建议戴个口罩再刷新。",
+    "这里还什么都没建好，你是第一个来的，荣幸吗？",
+    "正在装修中。工人师傅说：再等等。",
+    "页面装修中，进度 3%。刷新不会让它变快。",
+    "装修中，请勿在此堆放杂物。你的好奇心除外。",
+    "正在装修中，预计 2000 年后完工。",
+    "你每刷新一次，师傅就得多搬一块砖。",
+    "施工重地，请勿围观。你已经在围观了。",
+    "装修中，暂时没有内容——不过随机文案也算内容吧。",
+    "这里什么都没有，除了这句话和你的好奇心。",
+    "正在装修中。你来这里干什么？我也想知道。",
+    "抱歉，本页还在装修。要不你先去别处逛逛？",
+    "装修中，请勿打扰，除非你带了奶茶。"
   ];
 
   var KEY_LAST = "uc:last";
@@ -115,6 +210,61 @@ layout: null
   var visits = Number(load(KEY_N) || 0) + 1;
   store(KEY_N, String(visits));
   document.getElementById("n").textContent = String(visits);
+</script>
+
+<script>
+  // ── 主题切换：自动跟随系统 + 手动覆盖（手动选择记在 localStorage） ──
+  (function () {
+    var KEY_THEME = "uc:theme";
+    var BG = { light: "#f4f3f1", dark: "#1a1917" };
+    var root = document.documentElement;
+    var btn = document.getElementById("theme-toggle");
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function read() {
+      try { return localStorage.getItem(KEY_THEME); } catch (e) { return null; }
+    }
+    function write(v) {
+      try {
+        if (v) localStorage.setItem(KEY_THEME, v);
+        else localStorage.removeItem(KEY_THEME);
+      } catch (e) {}
+    }
+    // 当前实际生效的主题：手动优先，否则看系统
+    function effective() {
+      var t = root.getAttribute("data-theme");
+      if (t === "dark" || t === "light") return t;
+      return mq.matches ? "dark" : "light";
+    }
+    function sync() {
+      var dark = effective() === "dark";
+      var label = dark ? "切换到浅色模式" : "切换到深色模式";
+      btn.setAttribute("aria-label", label);
+      btn.setAttribute("title", label + "（按住 Shift 点击=跟随系统）");
+      btn.setAttribute("aria-pressed", dark ? "true" : "false");
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", dark ? BG.dark : BG.light);
+    }
+    function apply(theme) {
+      if (theme) root.setAttribute("data-theme", theme);
+      else root.removeAttribute("data-theme");
+      sync();
+    }
+
+    btn.addEventListener("click", function (e) {
+      if (e.shiftKey) { write(null); apply(null); return; }   // Shift+点击 = 恢复跟随系统
+      var next = effective() === "dark" ? "light" : "dark";
+      write(next);
+      apply(next);
+    });
+
+    // 用户没手动选过时，系统主题变化要实时跟随
+    var onSystemChange = function () { if (!read()) sync(); };
+    if (mq.addEventListener) mq.addEventListener("change", onSystemChange);
+    else if (mq.addListener) mq.addListener(onSystemChange);
+
+    sync();
+  })();
 </script>
 </body>
 </html>
